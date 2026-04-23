@@ -110,7 +110,7 @@ export default function WorkspacePBL() {
     if (compilerOutput.includes("Sistem siap")) setCompilerOutput(""); 
 
     try {
-      const response = await axios.post('https://autofeed.my.id/run-code', { code: code, inputs: "" });
+      const response = await axios.post('https://autofeed.my.id/api/run-code', { code: code, inputs: "" });
       if (response.data.status === "success") {
         setCompilerOutput(prev => prev + `\n[▶ RUN BERHASIL]\nOutput: ${response.data.output}\n`);
       } else {
@@ -130,7 +130,7 @@ export default function WorkspacePBL() {
     setAttemptCount(currentAttempt);
 
     try {
-      const response = await axios.post('https://autofeed.my.id/feedback', {
+      const response = await axios.post('https://autofeed.my.id/api/feedback', {
         user_id: user.id, 
         modul_id: modulData ? modulData.id : 1, 
         fase_pbl: fasePbl,
