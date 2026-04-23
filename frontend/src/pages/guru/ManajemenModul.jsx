@@ -51,7 +51,7 @@ export default function ManajemenModul() {
   const handleSimpan = async (endpoint, payload, resetFormFunc, pesanSukses) => {
     setLoading(true);
     try {
-      const res = await axios.post(`http://localhost:8000/api/guru/${endpoint}`, payload);
+      const res = await axios.post(`http://autofeed.my.id/api/guru/${endpoint}`, payload);
       
       if (res.data.status === 'success') {
         // Jika berhasil, munculkan popup sukses

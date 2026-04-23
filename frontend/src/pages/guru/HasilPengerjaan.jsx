@@ -21,7 +21,7 @@ export default function HasilPengerjaan() {
     setLoading(true);
     try {
       // Endpoint ini mengambil seluruh log riwayat
-      const res = await axios.get('http://localhost:8000/api/guru/riwayat');
+      const res = await axios.get('http://autofeed.my.id/api/guru/riwayat');
       if (res.data.status === 'success') {
         setDataRiwayat(res.data.data);
       }
@@ -76,7 +76,7 @@ export default function HasilPengerjaan() {
     
     try {
       // Meminta riwayat lengkap dari backend
-      const res = await axios.get(`http://localhost:8000/api/guru/portofolio/${siswa.user_id}/${selectedModul}`);
+      const res = await axios.get(`http://autofeed.my.id/api/guru/portofolio/${siswa.user_id}/${selectedModul}`);
       
       if (res.data.status === 'success') {
         setDetailPortofolio(res.data.data); // Murni mengambil dari database!

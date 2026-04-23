@@ -28,10 +28,10 @@ export default function PengaturanUjian() {
     setLoading(true);
     try {
       const [resPengaturan, resRekap, resAnalisis, resBank] = await Promise.all([
-        axios.get('http://localhost:8000/api/pengaturan-ujian'),
-        axios.get('http://localhost:8000/api/guru/hasil-ujian-rekap'),
-        axios.get(`http://localhost:8000/api/guru/analisis-soal/${tipeAnalisis}`),
-        axios.get(`http://localhost:8000/api/soal-ujian/${tipeBankSoal}`)
+        axios.get('http://autofeed.my.id/api/pengaturan-ujian'),
+        axios.get('http://autofeed.my.id/api/guru/hasil-ujian-rekap'),
+        axios.get(`http://autofeed.my.id/api/guru/analisis-soal/${tipeAnalisis}`),
+        axios.get(`http://autofeed.my.id/api/soal-ujian/${tipeBankSoal}`)
       ]);
 
       if (resPengaturan.data.status === 'success' && resPengaturan.data.data) {
@@ -63,7 +63,7 @@ export default function PengaturanUjian() {
     setPengaturan(dataUpdate);
 
     try {
-      await axios.post('http://localhost:8000/api/guru/pengaturan-ujian', dataUpdate);
+      await axios.post('http://autofeed.my.id/api/guru/pengaturan-ujian', dataUpdate);
       toast.success(`${tipe === 'pretest_aktif' ? 'Pre-Test' : 'Post-Test'} berhasil ${nilaiBaru ? 'Diaktifkan' : 'Dimatikan'}`);
     } catch (error) {
       setPengaturan({ ...pengaturan, [tipe]: !nilaiBaru });
@@ -140,7 +140,7 @@ export default function PengaturanUjian() {
     };
 
     try {
-      const res = await axios.post('http://localhost:8000/api/guru/soal-ujian', payload);
+      const res = await axios.post('http://autofeed.my.id/api/guru/soal-ujian', payload);
       if (res.data.status === 'success') {
         toast.success(res.data.message);
         setShowFormTambah(false);
@@ -155,7 +155,7 @@ export default function PengaturanUjian() {
   const handleHapusSoal = async (id) => {
     if(window.confirm("Yakin ingin menghapus soal ini?")) {
       try {
-        await axios.delete(`http://localhost:8000/api/guru/soal-ujian/${id}`);
+        await axios.delete(`http://autofeed.my.id/api/guru/soal-ujian/${id}`);
         toast.success("Soal berhasil dihapus!");
         fetchData();
       } catch (err) {
