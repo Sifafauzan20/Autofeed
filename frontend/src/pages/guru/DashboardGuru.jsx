@@ -124,9 +124,9 @@ export default function DashboardGuru() {
     setIsLoading(true);
     try {
       const [statsRes, pblRes, kuisRes] = await Promise.all([
-        axios.get('http://autofeed.my.id/api/guru/stats'),
-        axios.get('http://autofeed.my.id/api/guru/riwayat'),
-        axios.get('http://autofeed.my.id/api/guru/hasil-kuis')
+        axios.get('https://autofeed.my.id/api/guru/stats'),
+        axios.get('https://autofeed.my.id/api/guru/riwayat'),
+        axios.get('https://autofeed.my.id/api/guru/hasil-kuis')
       ]);
       if (statsRes.data.status === 'success') setStats(statsRes.data.data);
       if (pblRes.data.status === 'success') setDataPBL(pblRes.data.data);

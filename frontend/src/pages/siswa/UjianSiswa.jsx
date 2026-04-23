@@ -23,7 +23,7 @@ useEffect(() => {
       setLoading(true);
       try {
         // 1. CEK SATPAM: Tanya ke database apakah saklar ujian sedang nyala?
-        const resPengaturan = await axios.get('http://autofeed.my.id/api/pengaturan-ujian');
+        const resPengaturan = await axios.get('https://autofeed.my.id/api/pengaturan-ujian');
         if (resPengaturan.data.status === 'success') {
           const pengaturan = resPengaturan.data.data;
           
@@ -43,7 +43,7 @@ useEffect(() => {
         }
 
         // 2. JIKA AMAN: Baru kita izinkan mengambil soal dari database
-        const resSoal = await axios.get(`http://autofeed.my.id/api/soal-ujian/${tipeUjian}`);
+        const resSoal = await axios.get(`https://autofeed.my.id/api/soal-ujian/${tipeUjian}`);
         if (resSoal.data.status === 'success') {
           setDaftarSoal(resSoal.data.data);
           
@@ -80,7 +80,7 @@ useEffect(() => {
 
     setIsSubmitting(true);
     try {
-      const res = await axios.post('http://autofeed.my.id/api/ujian/submit', {
+      const res = await axios.post('https://autofeed.my.id/api/ujian/submit', {
         user_id: userData.id,
         tipe_ujian: tipeUjian,
         jawaban_siswa: jawabanSiswa

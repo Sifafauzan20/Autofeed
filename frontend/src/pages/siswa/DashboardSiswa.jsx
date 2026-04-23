@@ -17,7 +17,7 @@ export default function DashboardSiswa() {
     setLoadingDetail(true);
     try {
       // Menggunakan endpoint yang sama dengan guru, tetapi otomatis mengunci user_id milik siswa yang login
-      const res = await axios.get(`http://autofeed.my.id/api/guru/portofolio/${userData.id}/${selectedModul}`);
+      const res = await axios.get(`https://autofeed.my.id/api/guru/portofolio/${userData.id}/${selectedModul}`);
       if (res.data.status === 'success') {
         setDetailPortofolio(res.data.data);
       } else {

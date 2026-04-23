@@ -10,7 +10,7 @@ export default function Materi() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get('http://autofeed.my.id/api/materi')
+    axios.get('https://autofeed.my.id/api/materi')
       .then(response => {
         if (response.data.status === 'success') {
           const mappedData = response.data.data.map(item => {
