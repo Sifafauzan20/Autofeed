@@ -246,7 +246,7 @@ export default function PengaturanUjian() {
             Analisis Butir Soal
           </button>
           <button onClick={() => setActiveTab('bank')} className={`flex-1 py-4 font-bold text-center transition-colors ${activeTab === 'bank' ? 'bg-purple-50 text-purple-700 border-b-2 border-purple-600' : 'text-slate-500 hover:bg-purple-50'}`}>
-            Bank Soal Ujian
+            Bank Soal Pretest/Postest
           </button>
         </div>
 
