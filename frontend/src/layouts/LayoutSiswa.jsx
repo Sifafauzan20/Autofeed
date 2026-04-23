@@ -18,7 +18,7 @@ export default function LayoutSiswa() {
     // Fungsi untuk mengecek status ujian setiap kali halaman dimuat
     const cekStatusUjian = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/api/pengaturan-ujian');
+        const res = await axios.get('http://autofeed.my.id/api/pengaturan-ujian');
         if (res.data.status === 'success' && res.data.data) {
           setStatusUjian(res.data.data);
         }

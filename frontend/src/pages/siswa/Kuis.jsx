@@ -45,7 +45,7 @@ export default function Kuis() {
     let currentModulId = localStorage.getItem('activeModulId');
     if (!currentModulId || currentModulId === 'undefined') currentModulId = 1; 
     
-    axios.get(`http://localhost:8000/api/kuis/${currentModulId}`)
+    axios.get(`http://autofeed.my.id/api/kuis/${currentModulId}`)
       .then(response => {
         if (response.data.status === 'success') {
           setDaftarSoal(response.data.data);
@@ -78,7 +78,7 @@ export default function Kuis() {
     }
 
     try {
-      const response = await axios.post('http://localhost:8000/api/kuis/submit', {
+      const response = await axios.post('http://autofeed.my.id/api/kuis/submit', {
         user_id: userData.id,
         modul_id: 1, 
         skor: skorAkhir

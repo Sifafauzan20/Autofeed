@@ -51,7 +51,7 @@ export default function LayoutGuru() {
   const fetchRubrik = async (modulId) => {
     setIsLoadingRubrik(true);
     try {
-      const res = await axios.get(`http://localhost:8000/api/soal/${modulId}`);
+      const res = await axios.get(`http://autofeed.my.id/api/soal/${modulId}`);
       if (res.data.status === 'success' && res.data.data) {
         setRubrikData(res.data.data);
       } else {

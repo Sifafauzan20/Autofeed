@@ -91,7 +91,7 @@ export default function WorkspacePBL() {
     }
 
     setIsLoadingDB(true);
-    axios.get(`http://localhost:8000/api/soal/${currentModulId}`)
+    axios.get(`http://autofeed.my.id/api/soal/${currentModulId}`)
       .then(res => {
         if (res.data.status === 'success') setModulData(res.data.data);
         else setModulData(null); 
@@ -110,7 +110,7 @@ export default function WorkspacePBL() {
     if (compilerOutput.includes("Sistem siap")) setCompilerOutput(""); 
 
     try {
-      const response = await axios.post('http://localhost:8000/run-code', { code: code, inputs: "" });
+      const response = await axios.post('http://autofeed.my.id/run-code', { code: code, inputs: "" });
       if (response.data.status === "success") {
         setCompilerOutput(prev => prev + `\n[▶ RUN BERHASIL]\nOutput: ${response.data.output}\n`);
       } else {
@@ -130,7 +130,7 @@ export default function WorkspacePBL() {
     setAttemptCount(currentAttempt);
 
     try {
-      const response = await axios.post('http://localhost:8000/feedback', {
+      const response = await axios.post('http://autofeed.my.id/feedback', {
         user_id: user.id, 
         modul_id: modulData ? modulData.id : 1, 
         fase_pbl: fasePbl,
