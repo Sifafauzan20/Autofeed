@@ -294,11 +294,11 @@ export default function HasilPengerjaan() {
                         </div>
 
                         {/* Evaluasi AI */}
-                        <div className="bg-indigo-50/80 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
+                        <div className="bg-indigo-50/80 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/50 w-full overflow-hidden">
                           <h4 className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                            <Sparkles size={14}/> Evaluasi AI
+                            <Sparkles size={14} className="shrink-0" /> Evaluasi AI
                           </h4>
-                          <p className="text-indigo-900 dark:text-indigo-200/90 text-sm leading-relaxed">
+                          <p className="text-indigo-900 dark:text-indigo-200/90 text-sm leading-relaxed break-words whitespace-pre-wrap">
                             {formatBintang(data.feedback_ai)}
                           </p>
                         </div>
