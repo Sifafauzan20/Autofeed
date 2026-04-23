@@ -43,10 +43,24 @@ def get_db_connection():
 app = FastAPI()
 
 # PERBAIKAN 1: Pengaturan CORS yang benar untuk React
+# app.add_middleware(
+#     CORSMiddleware,
+#     # Spesifikkan port React kamu, jangan gunakan "*" jika allow_credentials=True
+#     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], 
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
+# Hosting
 app.add_middleware(
     CORSMiddleware,
-    # Spesifikkan port React kamu, jangan gunakan "*" jika allow_credentials=True
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], 
+    allow_origins=[
+        "http://autofeed.my.id",
+        "https://autofeed.my.id",
+        "http://www.autofeed.my.id",
+        "https://www.autofeed.my.id"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
