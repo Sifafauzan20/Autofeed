@@ -27,7 +27,7 @@ export default function Login() {
     try {
       if (isLoginView) {
         // PROSES LOGIN
-        const res = await axios.post('http://localhost:8000/api/login', {
+        const res = await axios.post('http://autofeed.my.id/api/login', {
           email: formData.email, password: formData.password
         });
 
@@ -42,7 +42,7 @@ export default function Login() {
         }
       } else {
         // PROSES SIGNUP (DAFTAR)
-        const res = await axios.post('http://localhost:8000/api/signup', formData);
+        const res = await axios.post('http://autofeed.my.id/api/signup', formData);
         if (res.data.status === 'success') {
           toast.success(res.data.message, { id: toastId });
           setIsLoginView(true); 
