@@ -1,70 +1,84 @@
-from fastapi import FastAPI
+import os
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import google.generativeai as genai
+from pydantic import BaseModel  # <--- INI YANG HILANG
+from dotenv import load_dotenv
+import mysql.connector
+import requests
+from prompts import SOCRAMIND_SYSTEM_PROMPT, generate_user_prompt
 import subprocess 
 import sys        
 import hashlib
 import json
 
-# Asumsikan file prompts.py sudah ada dan benar
-from prompts import SOCRAMIND_SYSTEM_PROMPT, generate_user_prompt
+# 1. Load variabel dari file .env
+load_dotenv()
 
-# ==========================================
-# KONFIGURASI GEMINI API
-# ==========================================
-GEMINI_API_KEY = "AIzaSyC1d_TeDCZ99vITmjHCf6gDhkKuxr4u8Vo"
-genai.configure(api_key=GEMINI_API_KEY)
+DINOIKI_API_KEY = os.getenv("DINOIKI_API_KEY")
+DINOIKI_URL = "https://ai.dinoiki.com/v1/chat/completions"
 
-model = genai.GenerativeModel(
-    model_name='gemini-2.5-flash',
-    system_instruction=SOCRAMIND_SYSTEM_PROMPT
-)
+app = FastAPI(root_path="/api")
 
-import mysql.connector
-from mysql.connector import Error
-
-# ==========================================
-# KONFIGURASI DATABASE MYSQL
-# ==========================================
-def get_db_connection():
-    try:
-        connection = mysql.connector.connect(
-            host='localhost',
-            database='autofeed_pbl',
-            user='root',      
-            password=''       
-        )
-        return connection
-    except Error as e:
-        print(f"Error connecting to MySQL: {e}")
-        return None
-
-app = FastAPI()
-
-# PERBAIKAN 1: Pengaturan CORS yang benar untuk React
-# app.add_middleware(
-#     CORSMiddleware,
-#     # Spesifikkan port React kamu, jangan gunakan "*" jika allow_credentials=True
-#     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], 
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
-
-# Hosting
+# 2. PENGATURAN CORS (WAJIB agar React bisa memanggil API ini)
 app.add_middleware(
     CORSMiddleware,
+    # Masukkan domain domain utama Anda di sini
     allow_origins=[
-        "http://autofeed.my.id",
         "https://autofeed.my.id",
-        "http://www.autofeed.my.id",
-        "https://www.autofeed.my.id"
+        "http://autofeed.my.id",
+        "https://www.autofeed.my.id",
+        "http://localhost:5173" # Untuk testing lokal
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 3. KONEKSI DATABASE
+def get_db_connection():
+    return mysql.connector.connect(
+        host="localhost", # Karena database ada di VPS yang sama
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME")
+    )
+    
+def get_student_history(user_id: int, modul_id: int):
+    connection = get_db_connection()
+    history_text = ""
+    if connection is None:
+        return history_text
+    try:
+        cursor = connection.cursor(dictionary=True)
+        # Ambil log dari fase 1 sampai 3
+        sql = """
+            SELECT fase, percobaan_ke, input_verbal, input_kode, balasan_ai 
+            FROM riwayat_belajar 
+            WHERE user_id = %s AND modul_id = %s AND fase < 4
+            ORDER BY fase ASC, percobaan_ke ASC
+        """
+        cursor.execute(sql, (user_id, modul_id))
+        logs = cursor.fetchall()
+        
+        for log in logs:
+            history_text += f"\n[Fase {log['fase']} - Percobaan {log['percobaan_ke']}]\n"
+            if log['input_verbal']:
+                history_text += f"Analisis Siswa: {log['input_verbal']}\n"
+            if log['input_kode']:
+                history_text += f"Kode Siswa:\n{log['input_kode']}\n"
+            history_text += f"Feedback AI: {log['balasan_ai']}\n"
+        return history_text
+    except Exception as e:
+        print(f"Error reading history: {e}")
+        return ""
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+@app.get("/")
+def home():
+    return {"status": "Backend SocraMind Aktif!"}
 
 class RunCodeRequest(BaseModel):
     code: str
@@ -145,7 +159,7 @@ class SubmitUjianSiswa(BaseModel):
     jawaban_siswa: dict # Contoh: {"1": "A", "2": "C"}
 
 # --- TAMBAHKAN ENDPOINT INI DI PALING BAWAH ---
-@app.post("/api/guru/skenario")
+@app.post("/guru/skenario")
 async def tambah_skenario(request: SkenarioBaruRequest):
     connection = get_db_connection()
     if connection is None:
@@ -181,7 +195,7 @@ async def tambah_skenario(request: SkenarioBaruRequest):
             cursor.close()
             connection.close()
 
-@app.post("/api/signup")
+@app.post("/signup")
 async def signup(request: SignupRequest):
     connection = get_db_connection()
     if connection is None:
@@ -206,12 +220,14 @@ async def signup(request: SignupRequest):
             cursor.close()
             connection.close()
 
-@app.post("/api/login")
+@app.post("/login")
 async def login(request: LoginRequest):
     connection = get_db_connection()
     if connection is None:
         return {"status": "error", "message": "Gagal terhubung ke database."}
         
+    cursor = None # WAJIB DIDEFINISIKAN DI SINI DULU!
+    
     try:
         hashed_password = hashlib.sha256(request.password.encode()).hexdigest()
         
@@ -224,15 +240,19 @@ async def login(request: LoginRequest):
             return {"status": "success", "data": user}
         else:
             return {"status": "error", "message": "Email atau Password salah!"}
-    except Error as e:
-        return {"status": "error", "message": str(e)}
+            
+    except Exception as e:
+        return {"status": "error", "message": f"Error MySQL: {str(e)}"}
+        
     finally:
-        if connection.is_connected():
+        # Pengecekan ekstra aman agar tidak crash!
+        if cursor is not None:
             cursor.close()
+        if connection is not None and connection.is_connected():
             connection.close()
 
 # 1. Ubah get_soal agar menerima parameter modul_id
-@app.get("/api/soal/{modul_id}")
+@app.get("/soal/{modul_id}")
 async def get_soal(modul_id: int):
     connection = get_db_connection()
     if connection is None:
@@ -259,7 +279,7 @@ async def get_soal(modul_id: int):
             connection.close()
 
 # 2. Ubah get_materi agar menampilkan SELURUH materi dari semua pertemuan
-@app.get("/api/materi")
+@app.get("/materi")
 async def get_semua_materi():
     connection = get_db_connection()
     if connection is None:
@@ -279,7 +299,7 @@ async def get_semua_materi():
             connection.close()
 
 @app.post("/run-code")
-async def run_code(request: RunCodeRequest):
+def run_code(request: RunCodeRequest):
     print("Mengeksekusi kode Python dari siswa...")
     if not request.code.strip():
         return {"status": "error", "output": "Kode kosong. Silakan tulis kode Python terlebih dahulu."}
@@ -301,50 +321,122 @@ async def run_code(request: RunCodeRequest):
         return {"status": "error", "output": f"Terjadi kesalahan sistem: {str(e)}"}
 
 @app.post("/feedback")
-async def get_feedback(request: FeedbackRequest):
+def get_feedback(request: FeedbackRequest): 
     print(f"Memproses feedback Fase {request.fase_pbl}...")
-    user_message = generate_user_prompt(request)
+    
+    connection = get_db_connection()
+    if connection is None:
+        return {"status_lulus_fase": False, "pesan_untuk_ui": "Gagal terhubung ke database."}
+
+    # --- PENAMBAL LUBANG 1: BYPASS FASE 4 (GHOST PHASE) ---
+    if request.fase_pbl == 4:
+        try:
+            cursor = connection.cursor()
+            sql_insert = """
+                INSERT INTO riwayat_belajar 
+                (user_id, modul_id, fase, percobaan_ke, input_verbal, input_kode, output_compiler, balasan_ai, status_lulus)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            val = (request.user_id, request.modul_id, 4, 1, "Siswa melakukan presentasi offline", request.input_kode, "", "Evaluasi dilewati. Berfokus pada diskusi kelas.", True)
+            cursor.execute(sql_insert, val)
+            connection.commit()
+            return {"status_lulus_fase": True, "pesan_untuk_ui": "Sesi presentasi selesai."}
+        except Exception as e:
+            print(f"Error Fase 4 Bypass: {e}")
+        finally:
+            connection.close()
 
     try:
-        response = model.generate_content(user_message)
-        balasan_ai = response.text
+        cursor = connection.cursor(dictionary=True)
         
+        # --- PENAMBAL LUBANG 2: HITUNG PERCOBAAN DARI DATABASE (Anti-Hack) ---
+        cursor.execute(
+            "SELECT COUNT(*) as total FROM riwayat_belajar WHERE user_id=%s AND modul_id=%s AND fase=%s",
+            (request.user_id, request.modul_id, request.fase_pbl)
+        )
+        current_attempt = cursor.fetchone()['total'] + 1
+
+        # --- AMBIL MEMORI ---
+        student_history = get_student_history(request.user_id, request.modul_id)
+        
+        # --- GENERATE PROMPT (Pastikan prompts.py sudah diupdate untuk menerima 3 parameter ini) ---
+        user_message = generate_user_prompt(request, current_attempt, student_history)
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {DINOIKI_API_KEY}"
+        }
+
+        payload = {
+            "model": "google/gemini-2.5-flash", 
+            "messages": [
+                {"role": "system", "content": SOCRAMIND_SYSTEM_PROMPT},
+                {"role": "user", "content": user_message}
+            ],
+            "temperature": 1.0,
+            "max_tokens": 1000
+        }
+
+        api_response = requests.post(DINOIKI_URL, headers=headers, json=payload, timeout=15)
+        api_response.raise_for_status() 
+        
+        hasil_json = api_response.json()
+        
+        print("====== DEBUG DINOIKI ======")
+        print(hasil_json)
+        print("===========================")
+        
+        try:
+            balasan_ai = hasil_json['choices'][0]['message']['content']
+        except (KeyError, IndexError, TypeError) as e:
+            print(f"Gagal ekstraksi JSON: {e}")
+            balasan_ai = "[BELUM LULUS]\nTerjadi kendala teknis saat memproses format umpan balik."
+        
+        # --- PENAMBAL LUBANG 3: LOGIKA KELULUSAN ---
         is_lulus = False
-        if "[LULUS]" in balasan_ai:
-            is_lulus = True
-            balasan_ai = balasan_ai.replace("[LULUS]", "").strip()
-        elif "[BELUM LULUS]" in balasan_ai:
-            is_lulus = False
-            balasan_ai = balasan_ai.replace("[BELUM LULUS]", "").strip()
-        else:
-            is_lulus = request.jumlah_percobaan >= 3
         
-        connection = get_db_connection()
-        if connection is not None:
-            try:
-                cursor = connection.cursor()
-                sql_insert = """
-                    INSERT INTO riwayat_belajar 
-                    (user_id, modul_id, fase, percobaan_ke, input_verbal, input_kode, output_compiler, balasan_ai, status_lulus)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """
-                val = (request.user_id, request.modul_id, request.fase_pbl, request.jumlah_percobaan, request.input_verbal, request.input_kode, request.output_compiler, balasan_ai, is_lulus)
-                cursor.execute(sql_insert, val)
-                connection.commit()
-            except Error as e:
-                print(f"-> Gagal menyimpan log: {e}")
-            finally:
-                if connection.is_connected():
-                    cursor.close()
-                    connection.close()
+        if request.fase_pbl == 5:
+            # Fase 5 OTOMATIS LULUS (AI hanya mereview)
+            is_lulus = True
+            balasan_ai = balasan_ai.replace("[LULUS]", "").replace("[BELUM LULUS]", "").strip()
+        else:
+            # Fase 1, 2, 3 pakai pengecekan tag
+            if "[LULUS]" in balasan_ai:
+                is_lulus = True
+                balasan_ai = balasan_ai.replace("[LULUS]", "").strip()
+            elif "[BELUM LULUS]" in balasan_ai:
+                is_lulus = False
+                balasan_ai = balasan_ai.replace("[BELUM LULUS]", "").strip()
+            else:
+                # Fallback jika AI lupa tag: otomatis lulus jika attempt sudah 4
+                is_lulus = current_attempt >= 4
+        
+        # --- SIMPAN KE DATABASE ---
+        sql_insert = """
+            INSERT INTO riwayat_belajar 
+            (user_id, modul_id, fase, percobaan_ke, input_verbal, input_kode, output_compiler, balasan_ai, status_lulus)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        val = (request.user_id, request.modul_id, request.fase_pbl, current_attempt, request.input_verbal, request.input_kode, request.output_compiler, balasan_ai, is_lulus)
+        cursor.execute(sql_insert, val)
+        connection.commit()
 
         return {"status_lulus_fase": is_lulus, "pesan_untuk_ui": balasan_ai}
         
+    except requests.exceptions.Timeout:
+        return {"status_lulus_fase": False, "pesan_untuk_ui": "Sistem AI sedang sibuk memproses. Silakan klik Minta Feedback sekali lagi."}
+    except requests.exceptions.RequestException as e:
+        print(f"Error API Dinoiki: {e}")
+        return {"status_lulus_fase": False, "pesan_untuk_ui": "Koneksi ke AI terputus. Silakan coba lagi."}
     except Exception as e:
-        print(f"Error LLM: {e}")
-        return {"status_lulus_fase": False, "pesan_untuk_ui": "Maaf, SocraMind sedang mengalami gangguan koneksi."}
-
-@app.get("/api/guru/riwayat")
+        print(f"Error Internal Python: {e}")
+        return {"status_lulus_fase": False, "pesan_untuk_ui": "Terjadi kendala saat memproses feedback."}
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+        
+@app.get("/guru/riwayat")
 async def get_riwayat_guru():
     connection = get_db_connection()
     
@@ -371,7 +463,7 @@ async def get_riwayat_guru():
             cursor.close()
             connection.close()
 
-@app.get("/api/materi/{modul_id}")
+@app.get("/materi/{modul_id}")
 async def get_materi(modul_id: int):
     connection = get_db_connection()
     if connection is None:
@@ -390,7 +482,7 @@ async def get_materi(modul_id: int):
             cursor.close()
             connection.close()
 
-@app.get("/api/kuis/{modul_id}")
+@app.get("/kuis/{modul_id}")
 async def get_kuis(modul_id: int):
     connection = get_db_connection()
     if connection is None:
@@ -424,7 +516,7 @@ async def get_kuis(modul_id: int):
             cursor.close()
             connection.close()
 
-@app.post("/api/kuis/submit")
+@app.post("/kuis/submit")
 async def submit_kuis(request: SubmitKuisRequest):
     connection = get_db_connection()
     if connection is None:
@@ -447,7 +539,7 @@ async def submit_kuis(request: SubmitKuisRequest):
             cursor.close()
             connection.close()
 
-@app.get("/api/guru/stats")
+@app.get("/guru/stats")
 async def get_guru_stats():
     connection = get_db_connection()
     if connection is None:
@@ -483,7 +575,7 @@ async def get_guru_stats():
             cursor.close()
             connection.close()
 
-@app.get("/api/guru/hasil-kuis")
+@app.get("/guru/hasil-kuis")
 async def get_hasil_kuis():
     connection = get_db_connection()
     try:
@@ -504,7 +596,7 @@ async def get_hasil_kuis():
             cursor.close()
             connection.close()
 
-@app.post("/api/guru/materi")
+@app.post("/guru/materi")
 async def tambah_materi(request: MateriBaruRequest):
     connection = get_db_connection()
     if connection is None:
@@ -526,7 +618,7 @@ async def tambah_materi(request: MateriBaruRequest):
             cursor.close()
             connection.close()
 
-@app.post("/api/guru/kuis")
+@app.post("/guru/kuis")
 async def tambah_kuis(request: KuisBaruRequest):
     connection = get_db_connection()
     if connection is None:
@@ -548,7 +640,7 @@ async def tambah_kuis(request: KuisBaruRequest):
             cursor.close()
             connection.close()
 
-@app.get("/api/guru/portofolio/{user_id}/{modul_id}")
+@app.get("/guru/portofolio/{user_id}/{modul_id}")
 async def get_portofolio_siswa(user_id: int, modul_id: int):
     connection = get_db_connection()
     
@@ -599,7 +691,7 @@ async def get_portofolio_siswa(user_id: int, modul_id: int):
 # ENDPOINT PRE-TEST & POST-TEST
 # ==========================================
 
-@app.get("/api/pengaturan-ujian")
+@app.get("/pengaturan-ujian")
 async def get_pengaturan_ujian():
     connection = get_db_connection()
     if not connection: return {"status": "error", "message": "DB Error"}
@@ -617,7 +709,7 @@ async def get_pengaturan_ujian():
             cursor.close()
             connection.close()
 
-@app.post("/api/guru/pengaturan-ujian")
+@app.post("/guru/pengaturan-ujian")
 async def update_pengaturan_ujian(request: PengaturanUjianUpdate):
     connection = get_db_connection()
     if not connection: return {"status": "error", "message": "DB Error"}
@@ -632,7 +724,7 @@ async def update_pengaturan_ujian(request: PengaturanUjianUpdate):
             cursor.close()
             connection.close()
 
-@app.get("/api/soal-ujian/{tipe_ujian}")
+@app.get("/soal-ujian/{tipe_ujian}")
 async def get_soal_ujian(tipe_ujian: str):
     connection = get_db_connection()
     if not connection: return {"status": "error", "message": "DB Error"}
@@ -661,7 +753,7 @@ async def get_soal_ujian(tipe_ujian: str):
             cursor.close()
             connection.close()
 
-@app.post("/api/guru/soal-ujian")
+@app.post("/guru/soal-ujian")
 async def tambah_soal_ujian(request: SoalUjianBaru):
     connection = get_db_connection()
     if not connection: return {"status": "error", "message": "DB Error"}
@@ -678,7 +770,7 @@ async def tambah_soal_ujian(request: SoalUjianBaru):
             cursor.close()
             connection.close()
 
-@app.post("/api/ujian/submit")
+@app.post("/ujian/submit")
 async def submit_ujian(request: SubmitUjianSiswa):
     connection = get_db_connection()
     if not connection: return {"status": "error", "message": "DB Error"}
@@ -717,7 +809,7 @@ async def submit_ujian(request: SubmitUjianSiswa):
             cursor.close()
             connection.close()
 
-@app.get("/api/guru/hasil-ujian-rekap")
+@app.get("/guru/hasil-ujian-rekap")
 async def rekap_hasil_ujian():
     connection = get_db_connection()
     if not connection: return {"status": "error", "message": "DB Error"}
@@ -744,7 +836,7 @@ async def rekap_hasil_ujian():
             cursor.close()
             connection.close()
 
-@app.get("/api/guru/analisis-soal/{tipe_ujian}")
+@app.get("/guru/analisis-soal/{tipe_ujian}")
 async def get_analisis_soal(tipe_ujian: str):
     connection = get_db_connection()
     if not connection: return {"status": "error", "message": "DB Error"}
@@ -786,7 +878,7 @@ async def get_analisis_soal(tipe_ujian: str):
         if connection.is_connected():
             cursor.close()
 
-@app.delete("/api/guru/soal-ujian/{soal_id}")
+@app.delete("/guru/soal-ujian/{soal_id}")
 async def hapus_soal_ujian(soal_id: int):
     connection = get_db_connection()
     if not connection: return {"status": "error", "message": "DB Error"}
