@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Lock, BookOpen } from 'lucide-react'; // Tambahkan icon Lock dan BookOpen
+import { ChevronLeft, MonitorPlay, CheckCircle2, Lock } from 'lucide-react';
 
 const getInstruksiPBL = (fase) => {
   switch (fase) {
@@ -14,19 +14,27 @@ const getInstruksiPBL = (fase) => {
   }
 };
 
+// --- DAFTAR MODUL HARDCODE (Bisa disesuaikan dengan topik skripsi Anda) ---
+const DAFTAR_STUDI_KASUS = [
+  { id: 1, judul: "Pertemuan 1", topik: "Logika Dasar & Variabel", deskripsi: "Menganalisis dan merancang input/output sederhana." },
+  { id: 2, judul: "Pertemuan 2", topik: "Struktur Percabangan (If-Else)", deskripsi: "Memecahkan masalah dengan logika pengambilan keputusan." },
+  { id: 3, judul: "Pertemuan 3", topik: "Struktur Perulangan (Looping)", deskripsi: "Otomasi sistem dengan menggunakan while atau for loop." }
+];
+
 export default function WorkspacePBL() {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('authUser')) || { nama: 'Siswa', kelas: '' };
+  const user = JSON.parse(localStorage.getItem('authUser')) || { id: 1, nama: 'Siswa', kelas: '' };
   
-  // --- STATE KUNCI PROGRESS ALUR BELAJAR ---
-  const currentModulId = localStorage.getItem('activeModulId') || 1;
-  const [isMateriSelesai, setIsMateriSelesai] = useState(false);
+  // --- STATE UNTUK LAYAR PEMILIHAN MODUL ---
+  const [isMemilihKasus, setIsMemilihKasus] = useState(true);
+  const [currentModulId, setCurrentModulId] = useState(Number(localStorage.getItem('activeModulId')) || 1);
 
+  // --- STATE WORKSPACE PBL ---
   const [fasePbl, setFasePbl] = useState(1);
   const [unlockedPhase, setUnlockedPhase] = useState(1); 
   
   const [modulData, setModulData] = useState(null);
-  const [isLoadingDB, setIsLoadingDB] = useState(true);
+  const [isLoadingDB, setIsLoadingDB] = useState(false);
 
   const [verbalInput, setVerbalInput] = useState('');
   const [code, setCode] = useState('');
@@ -39,10 +47,18 @@ export default function WorkspacePBL() {
   const [isPhaseComplete, setIsPhaseComplete] = useState(false);
   const isFirstRender = useRef(true);
 
-  // --- FITUR AUTO-SAVE ---
-  useEffect(() => {
-    const progressTersimpan = localStorage.getItem(`pbl_draft_modul_${currentModulId}`);
+  // --- FUNGSI MEMILIH KASUS ---
+  const handlePilihModul = (modulId) => {
+    setCurrentModulId(modulId);
+    localStorage.setItem('activeModulId', modulId);
+    setIsMemilihKasus(false); // Sembunyikan layar pemilihan, buka workspace
+  };
 
+  // --- FITUR AUTO-SAVE (Dijalankan ulang setiap ganti modul) ---
+  useEffect(() => {
+    if (isMemilihKasus) return; // Jangan load draft jika sedang di layar pilihan
+
+    const progressTersimpan = localStorage.getItem(`pbl_draft_modul_${currentModulId}`);
     if (progressTersimpan) {
       try {
         const data = JSON.parse(progressTersimpan);
@@ -57,27 +73,39 @@ export default function WorkspacePBL() {
       } catch (e) {
         console.error("Gagal membaca storage", e);
       }
+    } else {
+      // RESET STATE jika tidak ada draft (modul baru)
+      setFasePbl(1);
+      setUnlockedPhase(1);
+      setVerbalInput('');
+      setCode('');
+      setCompilerOutput('Sistem siap. Silakan ketik kode dan tekan Run.');
+      setFeedback('');
+      setAttemptCount(0);
+      setIsPhaseComplete(false);
     }
-  }, [currentModulId]);
+  }, [currentModulId, isMemilihKasus]);
 
   useEffect(() => {
-    if (isFirstRender.current) {
+    if (isFirstRender.current || isMemilihKasus) {
       isFirstRender.current = false;
       return; 
     }
-
     const dataProgress = {
       fasePbl, unlockedPhase, verbalInput, code, compilerOutput, feedback, attemptCount, isPhaseComplete
     };
-    
     localStorage.setItem(`pbl_draft_modul_${currentModulId}`, JSON.stringify(dataProgress));
-  }, [fasePbl, unlockedPhase, verbalInput, code, compilerOutput, feedback, attemptCount, isPhaseComplete, currentModulId]);
+  }, [fasePbl, unlockedPhase, verbalInput, code, compilerOutput, feedback, attemptCount, isPhaseComplete, currentModulId, isMemilihKasus]);
   
+  // --- PENENTU TAMPILAN LAYAR ---
   const isVerbalPhase = fasePbl === 1 || fasePbl === 2; 
-  const isCodingPhase = fasePbl === 3 || fasePbl === 5;
-  const isPresentationPhase = fasePbl === 4;
+  const isCodingPhase = fasePbl === 3 || fasePbl === 5; 
+  const isPresentationPhase = fasePbl === 4; 
   
-useEffect(() => {
+  // --- AMBIL DATA SKENARIO DARI DATABASE ---
+  useEffect(() => {
+    if (isMemilihKasus) return;
+
     setIsLoadingDB(true);
     axios.get(`https://autofeed.my.id/api/soal/${currentModulId}`)
       .then(res => {
@@ -86,7 +114,7 @@ useEffect(() => {
       })
       .catch(err => console.error("Gagal terhubung ke database:", err))
       .finally(() => setIsLoadingDB(false));
-  }, [currentModulId]);
+  }, [currentModulId, isMemilihKasus]);
 
   const instruksiDinamis = getInstruksiPBL(fasePbl);
   const kriteriaLulus = modulData?.rubrik_fase?.[fasePbl] || "Siswa harus menyelesaikan logika sesuai instruksi.";
@@ -156,8 +184,6 @@ useEffect(() => {
     setFeedback('');
     setAttemptCount(0);
     setIsPhaseComplete(false);
-    setVerbalInput('');
-    setCode('');
     setCompilerOutput('Sistem siap. Silakan ketik kode dan tekan Run.');
   };
 
@@ -193,6 +219,72 @@ useEffect(() => {
     );
   };
 
+  // ==========================================
+  // RENDER 1: LAYAR PEMILIHAN MODUL (BARU)
+  // ==========================================
+  if (isMemilihKasus) {
+    return (
+      <div className="flex flex-col h-full bg-transparent p-4 md:p-8 animate-fade-in pb-10">
+        <div className="mb-8">
+          <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">
+            Pilih Studi Kasus
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400 font-medium">
+            Pilih skenario pembelajaran Problem-Based Learning yang ingin kamu kerjakan hari ini.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {DAFTAR_STUDI_KASUS.map((mod) => {
+            // Cek apakah modul ini sudah selesai dikerjakan sebelumnya
+            const isDone = localStorage.getItem(`pbl_selesai_modul_${mod.id}`) === 'true';
+
+            return (
+              <div 
+                key={mod.id} 
+                onClick={() => handlePilihModul(mod.id)}
+                className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-white/50 dark:border-white/10 p-6 md:p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(99,102,241,0.15)] transition-all duration-300 cursor-pointer group hover:-translate-y-2 flex flex-col h-full relative overflow-hidden"
+              >
+                {/* Latar Belakang Kartu (Gradient Hiasan) */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-bl-full pointer-events-none transition-all group-hover:bg-indigo-500/20"></div>
+
+                <div className="flex justify-between items-start mb-6">
+                  <div className="p-4 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-2xl shadow-inner">
+                    <MonitorPlay size={28} />
+                  </div>
+                  {isDone && (
+                    <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/20 px-3 py-1.5 rounded-xl">
+                      <CheckCircle2 size={16} /> Selesai
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex-1">
+                  <p className="text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-2">
+                    {mod.judul}
+                  </p>
+                  <h3 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white mb-3 leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    {mod.topik}
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
+                    {mod.deskripsi}
+                  </p>
+                </div>
+
+                <button className="w-full py-3.5 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 font-bold rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                  Mulai Pengerjaan &rarr;
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // RENDER 2: LAYAR LOADING
+  // ==========================================
   if (isLoadingDB) {
     return (
       <div className="flex h-full items-center justify-center bg-transparent">
@@ -204,25 +296,47 @@ useEffect(() => {
     );
   }
 
+  // ==========================================
+  // RENDER 3: ERROR JIKA DATABASE TIDAK ADA
+  // ==========================================
   if (!isLoadingDB && !modulData) {
      return (
        <div className="flex flex-col h-full items-center justify-center bg-transparent gap-4 p-8 text-center">
          <div className="bg-white/40 dark:bg-white/10 backdrop-blur-xl p-10 rounded-3xl border border-white/50 dark:border-white/10 shadow-lg mx-4">
-           <h1 className="text-xl font-bold text-red-500 dark:text-red-400 mb-2">Gagal Memuat Data Modul</h1>
-           <p className="text-slate-600 dark:text-slate-300 mb-6 text-sm md:text-base">Pastikan server database (port 8000) menyala.</p>
-           <button onClick={() => window.location.reload()} className="px-6 py-3 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">Coba Muat Ulang</button>
+           <h1 className="text-xl font-bold text-red-500 dark:text-red-400 mb-2">Skenario Belum Dibuat</h1>
+           <p className="text-slate-600 dark:text-slate-300 mb-6 text-sm md:text-base">Guru belum membuat skenario PBL untuk pertemuan ini di database.</p>
+           <div className="flex gap-4 justify-center">
+             <button onClick={() => setIsMemilihKasus(true)} className="px-6 py-3 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-300">Kembali</button>
+             <button onClick={() => window.location.reload()} className="px-6 py-3 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md">Muat Ulang</button>
+           </div>
          </div>
        </div>
      );
   }
 
+  // ==========================================
+  // RENDER 4: WORKSPACE UTAMA (PBL)
+  // ==========================================
   return (
     <div className="flex h-full flex-col font-sans text-slate-800 dark:text-slate-100 bg-transparent transition-colors relative">
       
-      {/* HEADER PBL */}
+      {/* HEADER PBL (Dengan Tombol Kembali) */}
       <div className="bg-white/40 dark:bg-white/10 backdrop-blur-2xl px-4 md:px-6 py-4 border-b border-white/50 dark:border-white/10 shadow-sm z-10 rounded-t-3xl">
          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-           <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight">{judulModul}</h2>
+           <div className="flex items-center gap-4">
+             <button 
+               onClick={() => setIsMemilihKasus(true)}
+               className="p-2 bg-white/50 dark:bg-white/5 hover:bg-indigo-100 dark:hover:bg-white/10 rounded-xl transition-colors shadow-sm border border-slate-200 dark:border-white/10"
+               title="Kembali ke Daftar Kasus"
+             >
+               <ChevronLeft size={20} className="text-slate-600 dark:text-slate-300" />
+             </button>
+             <div>
+               <p className="text-[10px] md:text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Pertemuan {currentModulId}</p>
+               <h2 className="text-lg md:text-xl font-black text-slate-900 dark:text-white tracking-tight">{judulModul}</h2>
+             </div>
+           </div>
+           
            <div className="flex flex-wrap gap-1.5 md:gap-2 w-full xl:w-auto">
               {renderTombolFase(1)} {renderTombolFase(2)} {renderTombolFase(3)} {renderTombolFase(4)} {renderTombolFase(5)}
            </div>
@@ -244,6 +358,7 @@ useEffect(() => {
             <p>{skenarioDinamis}</p>
           </article>
 
+          {/* AREA INPUT VERBAL (Hanya Fase 1 & 2) */}
           {isVerbalPhase && (
             <div className="flex-1 mt-2 flex flex-col">
               <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Area Analisis & Jawaban:</label>
@@ -261,6 +376,39 @@ useEffect(() => {
             </div>
           )}
 
+          {/* TAMPILAN KHUSUS FASE 4: MODE PRESENTASI */}
+          {isPresentationPhase && (
+            <div className="mt-4 p-6 bg-slate-900 rounded-2xl border border-blue-500/30 shadow-lg text-center animate-fade-in">
+              <h3 className="text-xl font-black text-white mb-2">🎤 Mode Presentasi</h3>
+              <p className="text-slate-300 text-sm mb-4">
+                Silakan presentasikan hasil kodemu di depan kelas. Jelaskan alur logikanya dan diskusikan masukan dari teman-teman atau guru.
+              </p>
+              
+              <div className="text-left bg-black/50 p-4 rounded-xl border border-white/10 mb-6 overflow-x-auto">
+                <pre className="text-emerald-400 font-mono text-[13px] md:text-sm">
+                  <code>{code || "# Belum ada kode yang diselesaikan di Fase 3."}</code>
+                </pre>
+              </div>
+
+              <button 
+                onClick={async () => {
+                  try {
+                    await axios.post('https://autofeed.my.id/api/feedback', {
+                      user_id: user.id, modul_id: modulData ? modulData.id : 1, fase_pbl: 4,
+                      input_verbal: "", input_kode: code, output_compiler: "",
+                      jumlah_percobaan: 1, skenario_masalah: "", rubrik_fase: ""
+                    });
+                  } catch (e) { console.error("Gagal simpan fase 4", e); }
+                  handleJumpPhase(5);
+                }}
+                className="w-full md:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-500/30"
+              >
+                ✅ Akhiri Presentasi & Lanjut Evaluasi Akhir (Fase 5)
+              </button>
+            </div>
+          )}
+
+          {/* EDITOR PYTHON (Hanya Fase 3 & 5) */}
           {isCodingPhase && (
             <div className="mt-2 md:mt-4 flex flex-col shadow-md rounded-2xl overflow-hidden border border-slate-300 dark:border-white/10 shrink-0">
               <div className="flex items-center justify-between bg-slate-800 dark:bg-black/60 backdrop-blur-md text-white px-4 py-2.5 md:px-5 md:py-3 border-b border-slate-700 dark:border-white/10">
@@ -291,40 +439,7 @@ useEffect(() => {
             </div>
           )}
 
-          {isPresentationPhase && (
-            <div className="mt-4 p-6 bg-slate-900 rounded-2xl border border-blue-500/30 shadow-lg text-center">
-              <h3 className="text-xl font-black text-white mb-2">Mode Presentasi</h3>
-              <p className="text-slate-300 text-sm mb-4">
-                Silakan presentasikan hasil kodemu di depan kelas. Jelaskan alur logikanya dan diskusikan dengan teman-temanmu.
-              </p>
-              
-              {/* Menampilkan kode dari Fase 3 dalam bentuk Read-Only */}
-              <div className="text-left bg-black/50 p-4 rounded-xl border border-white/10 mb-6 overflow-auto">
-                <pre className="text-emerald-400 font-mono text-sm">
-                  <code>{code || "# Belum ada kode yang diselesaikan di Fase 3."}</code>
-                </pre>
-              </div>
-
-              <button 
-                onClick={async () => {
-                  // 1. Laporkan bypass Fase 4 ke database
-                  try {
-                    await axios.post('https://autofeed.my.id/api/feedback', {
-                      user_id: user.id, modul_id: modulData ? modulData.id : 1, fase_pbl: 4,
-                      input_verbal: "", input_kode: code, output_compiler: "",
-                      jumlah_percobaan: 1, skenario_masalah: "", rubrik_fase: ""
-                    });
-                  } catch (e) { console.error("Gagal simpan fase 4", e); }
-                  // 2. Lanjut ke Fase 5
-                  handleJumpPhase(5);
-                }}
-                className="w-full md:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-500/30"
-              >
-                ✅ Akhiri Presentasi & Lanjut Evaluasi Akhir (Fase 5)
-              </button>
-            </div>
-          )}
-
+          {/* TOMBOL FEEDBACK AI (Disembunyikan di Fase 4) */}
           {!isPresentationPhase && (
             <button 
               onClick={handleSubmitFeedback}
@@ -345,11 +460,12 @@ useEffect(() => {
               )}
             </button>
           )}
-          </div>
+        </div>
 
         {/* KOLOM KANAN (Console & AI Feedback) */}
         <div className="flex w-full md:flex-[0.8] flex-col md:h-full relative bg-white/20 dark:bg-black/40 backdrop-blur-lg shrink-0">
           
+          {/* CONSOLE (Hanya Fase 3 & 5) */}
           {isCodingPhase && (
             <div className="flex h-[250px] md:h-auto md:flex-[0.4] flex-col bg-[#010409]/90 dark:bg-black/60 backdrop-blur-xl overflow-hidden border-b border-slate-800 dark:border-white/10 shrink-0">
               <div className="flex items-center px-4 py-2 border-b border-slate-800/50 dark:border-white/10 bg-black/40">
@@ -377,7 +493,7 @@ useEffect(() => {
                    <div className="h-8 w-8 rounded-full border-4 border-indigo-200 dark:border-white/10 border-t-indigo-600 dark:border-t-indigo-400 animate-spin mb-3"></div>
                    Menyusun umpan balik...
                  </div>
-               ): isPresentationPhase ? (
+               ) : isPresentationPhase ? (
                  <div className="flex flex-col items-center justify-center h-full text-slate-500 dark:text-slate-400 text-center text-sm px-4">
                    <div className="text-4xl mb-3 opacity-40">👥</div>
                    <p className="font-bold text-slate-700 dark:text-slate-300">Sesi Presentasi</p>
@@ -395,9 +511,9 @@ useEffect(() => {
                           if (fasePbl < 5) {
                             handleNextPhase();
                           } else {
-                            // --- UBAH: SIMPAN STATUS PBL SELESAI ---
                             localStorage.setItem(`pbl_selesai_modul_${currentModulId}`, 'true');
-                            navigate('/siswa/kuis');
+                            // Kembali ke layar pilihan (atau lempar ke kuis)
+                            setIsMemilihKasus(true);
                           }
                        }}
                        className={`mt-6 w-full rounded-2xl py-3 md:py-4 text-sm md:text-base font-black text-white shadow-lg transition-all flex justify-center items-center gap-2 ${
@@ -406,7 +522,7 @@ useEffect(() => {
                          : 'bg-emerald-500 dark:bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/30'
                        }`}
                      >
-                       {fasePbl < 5 ? `Selesai! Lanjut Fase ${fasePbl + 1}` : `Lanjut ke Evaluasi Kuis →`} 
+                       {fasePbl < 5 ? `Selesai! Lanjut Fase ${fasePbl + 1}` : `Kembali ke Menu Utama →`} 
                      </button>
                    )}
                  </>
@@ -421,7 +537,6 @@ useEffect(() => {
           </div>
 
         </div>
-
       </div>
     </div>
   );
