@@ -191,7 +191,12 @@ export default function HasilPengerjaan() {
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400">
                         <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-800/50">Fase {item.fase}</span>
-                        <span>Percobaan ke-{item.percobaan_ke}</span>
+                        
+                        {/* Ubah span Percobaan_ke ini */}
+                        <span className={item.percobaan_ke >= 4 && !item.status_lulus ? "text-red-500 font-black flex items-center gap-1" : ""}>
+                          Percobaan ke-{item.percobaan_ke}
+                          {item.percobaan_ke >= 4 && !item.status_lulus && <span className="animate-pulse">⚠️ Intervensi</span>}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-5 text-right">

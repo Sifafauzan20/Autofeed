@@ -8,8 +8,8 @@ const getInstruksiPBL = (fase) => {
     case 1: return "Fase 1 (Orientasi): Pahami masalah. Variabel apa saja yang dibutuhkan? Kondisi apa yang menentukan hasil akhir?";
     case 2: return "Fase 2 (Organisasi): Langkah-langkah logika apa yang akan kamu gunakan? Tuliskan algoritmanya secara deskriptif.";
     case 3: return "Fase 3 (Penyelidikan): Terjemahkan logika Fase 2 ke sintaks Python. Tulis kodemu lalu jalankan (Run).";
-    case 4: return "Fase 4 (Penyajian): Periksa output terminal. Apakah program berjalan sempurna untuk semua kondisi soal? (run kodemu dan cek semua kondisi yang ada)";
-    case 5: return "Fase 5 (Evaluasi): Kesulitan apa yang kamu temukan? Apakah logikamu berubah dari awal? Tuliskan refleksimu.";
+    case 4: return "Fase 4 (Penyajian): Presentasikan hasil kodemu di depan kelas dan diskusikan jika ada logika yang kurang tepat.";
+    case 5: return "Fase 5 (Evaluasi): Lakukan perbaikan kodemu (jika ada) berdasarkan hasil presentasi tadi. Jalankan kode, lalu minta evaluasi menyeluruh dari AI.";
     default: return "";
   }
 };
@@ -38,14 +38,6 @@ export default function WorkspacePBL() {
   const [attemptCount, setAttemptCount] = useState(0);
   const [isPhaseComplete, setIsPhaseComplete] = useState(false);
   const isFirstRender = useRef(true);
-
-  // --- CEK APAKAH MATERI SUDAH DIBACA ---
-  useEffect(() => {
-    const statusMateri = localStorage.getItem(`materi_selesai_modul_${currentModulId}`);
-    if (statusMateri === 'true') {
-      setIsMateriSelesai(true);
-    }
-  }, [currentModulId]);
 
   // --- FITUR AUTO-SAVE ---
   useEffect(() => {
@@ -81,15 +73,11 @@ export default function WorkspacePBL() {
     localStorage.setItem(`pbl_draft_modul_${currentModulId}`, JSON.stringify(dataProgress));
   }, [fasePbl, unlockedPhase, verbalInput, code, compilerOutput, feedback, attemptCount, isPhaseComplete, currentModulId]);
   
-  const isVerbalPhase = fasePbl === 1 || fasePbl === 2 || fasePbl === 5;
-  const isCodingPhase = fasePbl === 3 || fasePbl === 4;
+  const isVerbalPhase = fasePbl === 1 || fasePbl === 2; 
+  const isCodingPhase = fasePbl === 3 || fasePbl === 5;
+  const isPresentationPhase = fasePbl === 4;
   
-  useEffect(() => {
-    if (!isMateriSelesai) {
-      setIsLoadingDB(false); // Jangan fetch DB kalau masih dilock
-      return;
-    }
-
+useEffect(() => {
     setIsLoadingDB(true);
     axios.get(`https://autofeed.my.id/api/soal/${currentModulId}`)
       .then(res => {
@@ -98,7 +86,7 @@ export default function WorkspacePBL() {
       })
       .catch(err => console.error("Gagal terhubung ke database:", err))
       .finally(() => setIsLoadingDB(false));
-  }, [currentModulId, isMateriSelesai]);
+  }, [currentModulId]);
 
   const instruksiDinamis = getInstruksiPBL(fasePbl);
   const kriteriaLulus = modulData?.rubrik_fase?.[fasePbl] || "Siswa harus menyelesaikan logika sesuai instruksi.";
@@ -144,9 +132,9 @@ export default function WorkspacePBL() {
       
       setFeedback(response.data.pesan_untuk_ui);
       
-      if (response.data.status_lulus_fase === true || currentAttempt >= 3) {
+      if (response.data.status_lulus_fase === true || currentAttempt >= 4) {
         setIsPhaseComplete(true);
-        if (currentAttempt >= 3 && response.data.status_lulus_fase === false) {
+        if (currentAttempt >= 4 && response.data.status_lulus_fase === false) {
            setFeedback(prev => prev + "\n\n*(Batas percobaan telah habis. Silakan perhatikan evaluasi di atas dan lanjut ke fase berikutnya).*");
         }
       }
@@ -204,31 +192,6 @@ export default function WorkspacePBL() {
       </button>
     );
   };
-
-  // ==========================================
-  // TAMPILAN JIKA MATERI BELUM DIBACA (TERKUNCI)
-  // ==========================================
-  if (!isMateriSelesai) {
-    return (
-      <div className="flex flex-col h-full items-center justify-center bg-transparent gap-4 p-8 text-center animate-fade-in">
-        <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl p-10 md:p-14 rounded-3xl border border-white/50 dark:border-white/10 shadow-2xl mx-4 max-w-lg w-full flex flex-col items-center">
-          <div className="w-20 h-20 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6 shadow-inner">
-            <Lock size={36} className="text-slate-500 dark:text-slate-400" />
-          </div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white mb-3">Workspace Terkunci</h1>
-          <p className="text-slate-600 dark:text-slate-400 mb-8 text-sm md:text-base leading-relaxed">
-            Untuk membuka kunci studi kasus PBL ini, kamu harus membaca dan memahami materi pembelajaran Pertemuan {currentModulId} terlebih dahulu.
-          </p>
-          <button 
-            onClick={() => navigate('/siswa/materi')} 
-            className="w-full px-6 py-4 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-700 hover:-translate-y-1 transition-all shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2"
-          >
-            <BookOpen size={20} /> Baca Materi Sekarang
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (isLoadingDB) {
     return (
@@ -328,25 +291,61 @@ export default function WorkspacePBL() {
             </div>
           )}
 
-          <button 
-            onClick={handleSubmitFeedback}
-            disabled={loading || isPhaseComplete || (isVerbalPhase && !verbalInput.trim()) || (isCodingPhase && !code.trim())}
-            className={`mt-6 w-full rounded-2xl py-3.5 md:py-4 text-[14px] md:text-[16px] font-black transition-all shadow-lg backdrop-blur-sm ${
-              loading || isPhaseComplete || (isVerbalPhase && !verbalInput.trim()) || (isCodingPhase && !code.trim()) 
-              ? 'bg-white/40 dark:bg-white/5 border border-white/50 dark:border-white/5 text-slate-500 dark:text-slate-500 cursor-not-allowed shadow-none' 
-              : 'bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-500 dark:hover:bg-indigo-400 text-white border border-indigo-400 dark:border-indigo-500/50 hover:-translate-y-1 shadow-indigo-500/30'
-            }`}
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                Menganalisis...
-              </span>
-            ) : (
-              isPhaseComplete ? `Fase Selesai (${attemptCount}/3 Percobaan)` : `🤖 Minta Feedback AI (${attemptCount}/3)`
-            )}
-          </button>
-        </div>
+          {isPresentationPhase && (
+            <div className="mt-4 p-6 bg-slate-900 rounded-2xl border border-blue-500/30 shadow-lg text-center">
+              <h3 className="text-xl font-black text-white mb-2">Mode Presentasi</h3>
+              <p className="text-slate-300 text-sm mb-4">
+                Silakan presentasikan hasil kodemu di depan kelas. Jelaskan alur logikanya dan diskusikan dengan teman-temanmu.
+              </p>
+              
+              {/* Menampilkan kode dari Fase 3 dalam bentuk Read-Only */}
+              <div className="text-left bg-black/50 p-4 rounded-xl border border-white/10 mb-6 overflow-auto">
+                <pre className="text-emerald-400 font-mono text-sm">
+                  <code>{code || "# Belum ada kode yang diselesaikan di Fase 3."}</code>
+                </pre>
+              </div>
+
+              <button 
+                onClick={async () => {
+                  // 1. Laporkan bypass Fase 4 ke database
+                  try {
+                    await axios.post('https://autofeed.my.id/api/feedback', {
+                      user_id: user.id, modul_id: modulData ? modulData.id : 1, fase_pbl: 4,
+                      input_verbal: "", input_kode: code, output_compiler: "",
+                      jumlah_percobaan: 1, skenario_masalah: "", rubrik_fase: ""
+                    });
+                  } catch (e) { console.error("Gagal simpan fase 4", e); }
+                  // 2. Lanjut ke Fase 5
+                  handleJumpPhase(5);
+                }}
+                className="w-full md:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-500/30"
+              >
+                ✅ Akhiri Presentasi & Lanjut Evaluasi Akhir (Fase 5)
+              </button>
+            </div>
+          )}
+
+          {!isPresentationPhase && (
+            <button 
+              onClick={handleSubmitFeedback}
+              disabled={loading || isPhaseComplete || (isVerbalPhase && !verbalInput.trim()) || (isCodingPhase && !code.trim())}
+              className={`mt-6 w-full rounded-2xl py-3.5 md:py-4 text-[14px] md:text-[16px] font-black transition-all shadow-lg backdrop-blur-sm ${
+                loading || isPhaseComplete || (isVerbalPhase && !verbalInput.trim()) || (isCodingPhase && !code.trim()) 
+                ? 'bg-white/40 dark:bg-white/5 border border-white/50 dark:border-white/5 text-slate-500 dark:text-slate-500 cursor-not-allowed shadow-none' 
+                : 'bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-500 dark:hover:bg-indigo-400 text-white border border-indigo-400 dark:border-indigo-500/50 hover:-translate-y-1 shadow-indigo-500/30'
+              }`}
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                  Menganalisis...
+                </span>
+              ) : (
+                isPhaseComplete ? `Fase Selesai (${attemptCount}/4 Percobaan)` : `🤖 Minta Feedback AI (${attemptCount}/4)`
+              )}
+            </button>
+          )}
+          </div>
 
         {/* KOLOM KANAN (Console & AI Feedback) */}
         <div className="flex w-full md:flex-[0.8] flex-col md:h-full relative bg-white/20 dark:bg-black/40 backdrop-blur-lg shrink-0">
@@ -377,6 +376,12 @@ export default function WorkspacePBL() {
                  <div className="flex flex-col items-center justify-center h-full text-indigo-500 dark:text-indigo-400 animate-pulse font-bold text-sm">
                    <div className="h-8 w-8 rounded-full border-4 border-indigo-200 dark:border-white/10 border-t-indigo-600 dark:border-t-indigo-400 animate-spin mb-3"></div>
                    Menyusun umpan balik...
+                 </div>
+               ): isPresentationPhase ? (
+                 <div className="flex flex-col items-center justify-center h-full text-slate-500 dark:text-slate-400 text-center text-sm px-4">
+                   <div className="text-4xl mb-3 opacity-40">👥</div>
+                   <p className="font-bold text-slate-700 dark:text-slate-300">Sesi Presentasi</p>
+                   <p className="mt-1 text-[12px] md:text-[13px] opacity-80">Jelaskan hasil pekerjaanmu secara langsung di kelas.</p>
                  </div>
                ) : feedback ? (
                  <>

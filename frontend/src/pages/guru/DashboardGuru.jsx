@@ -185,7 +185,7 @@ export default function DashboardGuru() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           <StatCard title="Total Siswa" value={stats.total_siswa} icon={Users} colorClass="text-blue-600 dark:text-blue-400" bgIconClass="bg-blue-100 dark:bg-blue-500/20" />
           <StatCard title="Rata-rata Kuis" value={stats.rata_skor} subtitle="Dari Modul Aktif" icon={Target} colorClass="text-emerald-600 dark:text-emerald-400" bgIconClass="bg-emerald-100 dark:bg-emerald-500/20" />
-          <StatCard title="Perlu Intervensi" value={stats.perlu_bantuan} subtitle="*Gagal ≥ 3x di Fase PBL" icon={AlertTriangle} colorClass="text-red-500 dark:text-red-400" bgIconClass="bg-red-100 dark:bg-red-500/20" />
+          <StatCard title="Perlu Intervensi" value={stats.perlu_bantuan} subtitle="*Gagal ≥ 4x di Fase PBL" icon={AlertTriangle} colorClass="text-red-500 dark:text-red-400" bgIconClass="bg-red-100 dark:bg-red-500/20" />
         </div>
 
         {/* AREA GRAFIK (CHARTS) */}
@@ -312,7 +312,15 @@ export default function DashboardGuru() {
                         <td className="px-4 py-3 md:p-5 text-center">
                           <span className="bg-blue-100/80 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-1 md:px-3 md:py-1.5 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black border border-blue-200/50 dark:border-blue-800/50">Fase {log.fase}</span>
                         </td>
-                        <td className="px-4 py-3 md:p-5 text-center font-bold text-slate-600 dark:text-slate-300">Ke-{log.percobaan_ke}</td>
+                        <td className="px-4 py-3 md:p-5 text-center">
+                          <span className="font-bold text-slate-600 dark:text-slate-300">Ke-{log.percobaan_ke}</span>
+                          {/* Tambahkan indikator peringatan ini */}
+                          {log.percobaan_ke >= 4 && (!log.status_lulus || log.status_lulus === "0") && (
+                            <span className="ml-2 inline-block bg-red-100 text-red-600 text-[9px] px-1.5 py-0.5 rounded font-black animate-pulse">
+                              ⚠️ BANTU
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 md:p-5">
                           <div className="truncate max-w-[200px] xl:max-w-md bg-white/50 dark:bg-black/30 px-2.5 py-1.5 md:px-3 md:py-2 rounded-lg md:rounded-xl border border-white/50 dark:border-white/5 font-mono text-[11px] md:text-[13px] text-slate-700 dark:text-slate-300" title={log.input_verbal || log.input_kode}>
                             {log.input_verbal || log.input_kode || "Tidak ada input"}
