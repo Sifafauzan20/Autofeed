@@ -31,6 +31,26 @@ export default function DashboardSiswa() {
     }
   };
 
+  // --- STATE UNTUK STATISTIK DASHBOARD ---
+  const [stats, setStats] = useState({
+    materi_selesai: 0,
+    total_materi: 3,
+    poin_keaktifan: 0,
+    fase_sekarang: 1,
+    progres_persen: 0
+  });
+
+  // --- AMBIL DATA STATISTIK ---
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await axios.get(`https://autofeed.my.id/api/siswa/dashboard-stats/${userData.id}`);
+        if (res.data.status === 'success') setStats(res.data.data);
+      } catch (err) { console.error("Gagal load stats:", err); }
+    };
+    fetchStats();
+  }, []);
+
   // Muat ulang data setiap kali nomor pertemuan diubah
   useEffect(() => {
     fetchPortofolioSaya();
@@ -79,7 +99,7 @@ export default function DashboardSiswa() {
           </div>
           <div>
             <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-1 transition-colors">Materi Selesai</p>
-            <p className="text-3xl font-black text-slate-800 dark:text-white transition-colors">1<span className="text-lg text-slate-500 dark:text-slate-400 font-medium">/3</span></p>
+            <p className="text-3xl font-black text-slate-800 dark:text-white transition-colors">{stats.materi_selesai}<span className="text-lg text-slate-500 dark:text-slate-400 font-medium">/{stats.total_materi}</span></p>
           </div>
         </div>
 
@@ -89,21 +109,21 @@ export default function DashboardSiswa() {
           </div>
           <div>
             <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-1 transition-colors">Poin Keaktifan</p>
-            <p className="text-3xl font-black text-slate-800 dark:text-white transition-colors">120<span className="text-lg text-slate-500 dark:text-slate-400 font-medium"> Poin</span></p>
+            <p className="text-3xl font-black text-slate-800 dark:text-white transition-colors">{stats.poin_keaktifan}<span className="text-lg text-slate-500 dark:text-slate-400 font-medium"> Poin</span></p>
           </div>
         </div>
 
         <div className="bg-white/40 dark:bg-white/5 backdrop-blur-lg p-6 rounded-3xl shadow-sm border border-white/50 dark:border-white/10 flex items-center justify-between hover:bg-white/60 dark:hover:bg-white/10 transition-all">
           <div>
             <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-1 transition-colors">Progres PBL</p>
-            <p className="text-3xl font-black text-slate-800 dark:text-white transition-colors">Fase 3</p>
+            <p className="text-3xl font-black text-slate-800 dark:text-white transition-colors">Fase {stats.fase_sekarang}</p>
           </div>
           <div className="relative w-20 h-20 flex items-center justify-center drop-shadow-md">
              <svg className="w-full h-full transform -rotate-90">
                <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-white/50 dark:text-white/10" />
-               <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray="226" strokeDashoffset="90" className="text-purple-500 dark:text-purple-400" />
+               <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray="226" strokeDashoffset={226 - (226 * stats.progres_persen) / 100} className="text-purple-500 dark:text-purple-400" />
              </svg>
-             <span className="absolute text-sm font-black text-purple-700 dark:text-purple-300">60%</span>
+             <span className="absolute text-sm font-black text-purple-700 dark:text-purple-300">{stats.progres_persen}%</span>
           </div>
         </div>
       </div>

@@ -345,6 +345,7 @@ export default function DashboardGuru() {
                     <th className="px-4 py-3 md:p-5 font-semibold">Waktu Selesai</th>
                     <th className="px-4 py-3 md:p-5 font-semibold">Identitas Siswa</th>
                     <th className="px-4 py-3 md:p-5 font-semibold">Mata Pelajaran / Modul</th>
+                    <th className="px-4 py-3 md:p-5 font-semibold text-center">Poin Keaktifan PBL</th>
                     <th className="px-4 py-3 md:p-5 font-semibold text-center">Skor Akhir</th>
                     <th className="px-4 py-3 md:p-5 font-semibold">Predikat</th>
                   </tr>
@@ -360,7 +361,12 @@ export default function DashboardGuru() {
                           <div className="font-bold text-slate-900 dark:text-white">{kuis.nama}</div>
                           <div className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400">{kuis.kelas || 'Tanpa Kelas'}</div>
                         </td>
-                        <td className="px-4 py-3 md:p-5 text-slate-700 dark:text-slate-300 font-medium">Modul 1: Algoritma Dasar</td>
+                        <td className="px-4 py-3 md:p-5 text-slate-700 dark:text-slate-300 font-medium">{kuis.judul_modul || "Modul Tidak Diketahui"}</td>
+                        <td className="px-4 py-3 md:p-5 text-center">
+                          <span className="font-black text-amber-600 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-500/10 px-3 py-1.5 rounded-xl border border-amber-200/50 dark:border-amber-500/30">
+                            {kuis.total_poin || 0} 🏆
+                          </span>
+                        </td>
                         <td className="px-4 py-3 md:p-5 text-center">
                           <span className={`text-base md:text-lg font-black ${kuis.skor >= 70 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
                             {kuis.skor}
