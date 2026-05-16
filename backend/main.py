@@ -126,6 +126,7 @@ class KuisBaruRequest(BaseModel):
     opsi_b: str
     opsi_c: str
     opsi_d: str
+    opsi_e: str
     jawaban_benar: str
 
 # --- TAMBAHKAN MODEL INI DI BAWAH MODEL YANG SUDAH ADA ---
@@ -503,7 +504,8 @@ async def get_kuis(modul_id: int):
                     {"id": "A", "teks": soal["opsi_a"]},
                     {"id": "B", "teks": soal["opsi_b"]},
                     {"id": "C", "teks": soal["opsi_c"]},
-                    {"id": "D", "teks": soal["opsi_d"]}
+                    {"id": "D", "teks": soal["opsi_d"]},
+                    {"id": "E", "teks": soal["opsi_e"]}
                 ],
                 "jawabanBenar": soal["jawaban_benar"]
             })
@@ -626,10 +628,10 @@ async def tambah_kuis(request: KuisBaruRequest):
         
     try:
         cursor = connection.cursor()
-        sql = """INSERT INTO kuis_soal (modul_id, pertanyaan, opsi_a, opsi_b, opsi_c, opsi_d, jawaban_benar) 
-                 VALUES (%s, %s, %s, %s, %s, %s, %s)"""
+        sql = """INSERT INTO kuis_soal (modul_id, pertanyaan, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, jawaban_benar) 
+                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
         val = (request.modul_id, request.pertanyaan, request.opsi_a, request.opsi_b, 
-               request.opsi_c, request.opsi_d, request.jawaban_benar)
+               request.opsi_c, request.opsi_d, request.opsi_e, request.jawaban_benar)
         cursor.execute(sql, val)
         connection.commit()
         return {"status": "success", "message": "Soal Kuis berhasil ditambahkan!"}

@@ -348,7 +348,6 @@ export default function WorkspacePBL() {
              ========================================== */
           <div className="flex-1 w-full bg-slate-900 flex flex-col items-center justify-center p-6 md:p-12 overflow-y-auto z-20 rounded-b-3xl">
             <div className="w-full max-w-4xl text-center animate-fade-in">
-              <h3 className="text-3xl md:text-4xl font-black text-white mb-4 tracking-tight">🎤 Mode Presentasi Hasil Karya</h3>
               <p className="text-slate-300 text-base md:text-lg mb-8 leading-relaxed max-w-2xl mx-auto">
                 Silakan presentasikan hasil kodemu di depan kelas. Jelaskan alur logikanya dan diskusikan masukan dari teman-teman atau guru.
               </p>

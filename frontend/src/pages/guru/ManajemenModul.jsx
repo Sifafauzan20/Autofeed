@@ -13,7 +13,7 @@ export default function ManajemenModul() {
   const [materiBlocks, setMateriBlocks] = useState([{ id: Date.now(), type: 'text', content: '' }]);
 
   // --- STATE LAINNYA ---
-  const [formKuis, setFormKuis] = useState({ modul_id: 1, pertanyaan: '', opsi_a: '', opsi_b: '', opsi_c: '', opsi_d: '', jawaban_benar: 'A' });
+  const [formKuis, setFormKuis] = useState({ modul_id: 1, pertanyaan: '', opsi_a: '', opsi_b: '', opsi_c: '', opsi_d: '', opsi_e: '', jawaban_benar: 'A' });
   const [formSkenario, setFormSkenario] = useState({
     modul_id: 1, judul: '', skenario: '',
     rubrik: [
@@ -87,7 +87,7 @@ export default function ManajemenModul() {
 
   const handleSubmitKuis = (e) => {
     e.preventDefault();
-    handleSimpan('kuis', formKuis, () => setFormKuis({ ...formKuis, pertanyaan: '', opsi_a: '', opsi_b: '', opsi_c: '', opsi_d: '', jawaban_benar: 'A' }));
+    handleSimpan('kuis', formKuis, () => setFormKuis({ ...formKuis, pertanyaan: '', opsi_a: '', opsi_b: '', opsi_c: '', opsi_d: '', opsi_e: '', jawaban_benar: 'A' }));
   };
 
   const handleSubmitSkenario = (e) => {
@@ -292,12 +292,14 @@ export default function ManajemenModul() {
                 <div><label className={labelClass}>Opsi B</label><input required type="text" value={formKuis.opsi_b} onChange={e => setFormKuis({...formKuis, opsi_b: e.target.value})} className={inputClass} /></div>
                 <div><label className={labelClass}>Opsi C</label><input required type="text" value={formKuis.opsi_c} onChange={e => setFormKuis({...formKuis, opsi_c: e.target.value})} className={inputClass} /></div>
                 <div><label className={labelClass}>Opsi D</label><input required type="text" value={formKuis.opsi_d} onChange={e => setFormKuis({...formKuis, opsi_d: e.target.value})} className={inputClass} /></div>
+                <div className="md:col-span-2"><label className={labelClass}>Opsi E</label><input required type="text" value={formKuis.opsi_e} onChange={e => setFormKuis({...formKuis, opsi_e: e.target.value})} className={inputClass} /></div>
               </div>
               <div>
                 <label className={labelClass}>Jawaban Benar</label>
                 <select value={formKuis.jawaban_benar} onChange={e => setFormKuis({...formKuis, jawaban_benar: e.target.value})} className="w-full rounded-xl border border-emerald-300 dark:border-emerald-700/50 p-3.5 focus:ring-2 focus:ring-emerald-500 outline-none bg-emerald-50/80 dark:bg-emerald-900/30 backdrop-blur-sm text-emerald-900 dark:text-emerald-300 font-bold transition-all">
                   <option value="A" className="text-slate-800">Opsi A</option><option value="B" className="text-slate-800">Opsi B</option>
                   <option value="C" className="text-slate-800">Opsi C</option><option value="D" className="text-slate-800">Opsi D</option>
+                  <option value="E" className="text-slate-800">Opsi E</option>
                 </select>
               </div>
               <button type="submit" disabled={loading} className="w-full flex justify-center items-center gap-2 bg-emerald-600 dark:bg-emerald-500 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 disabled:bg-slate-400 mt-6">
