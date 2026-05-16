@@ -13,16 +13,6 @@ export default function Kuis() {
   const currentModulId = localStorage.getItem('activeModulId') || 1;
   const isPblSelesai = localStorage.getItem(`pbl_selesai_modul_${currentModulId}`) === 'true';
 
-  // if (!isPblSelesai) {
-  //   return (
-  //     <div className="flex flex-col items-center justify-center h-full text-center">
-  //       <h1>Kuis Terkunci 🔒</h1>
-  //       <p>Selesaikan seluruh Fase di Workspace PBL untuk Pertemuan {currentModulId} terlebih dahulu.</p>
-  //       <button onClick={() => navigate('/siswa/pbl')}>Kembali ke Workspace</button>
-  //     </div>
-  //   );
-  // }
-
   // --- FITUR AUTO-SAVE ---
   useEffect(() => {
     const currentModulId = localStorage.getItem('activeModulId') || 1;
@@ -98,6 +88,31 @@ export default function Kuis() {
     }
   };
 
+  // --- FUNGSI UNTUK MERENDER KODE ---
+  const formatTeksDenganKode = (teks) => {
+    if (!teks) return "";
+    
+    // Pisahkan teks berdasarkan triple backticks (```)
+    const parts = teks.split(/```/g);
+    
+    return parts.map((part, index) => {
+      // Index ganjil berarti teks tersebut tadinya diapit oleh ```
+      if (index % 2 !== 0) {
+        // Menghilangkan label bahasa (misal: "python") jika guru mengetik ```python
+        const cleanCode = part.replace(/^[a-zA-Z]+\n/, '').trim();
+        
+        return (
+          <div key={index} className="w-full bg-[#0d1117] text-emerald-300 p-4 rounded-xl font-mono text-[12px] md:text-[14px] overflow-x-auto my-3 border border-slate-700/50 shadow-inner">
+            <pre className="whitespace-pre font-mono leading-relaxed"><code>{cleanCode}</code></pre>
+          </div>
+        );
+      }
+      
+      // Index genap adalah teks pertanyaan biasa
+      return <span key={index} className="whitespace-pre-line leading-relaxed">{part}</span>;
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center bg-transparent">
@@ -113,7 +128,6 @@ export default function Kuis() {
     <div className="flex h-full flex-col font-sans text-slate-800 dark:text-slate-100 bg-transparent overflow-y-auto pb-32">
       
       {/* HEADER STICKY */}
-      {/* UBAH: Padding dan Margin disesuaikan untuk HP */}
       <div className="bg-white/40 dark:bg-slate-900/50 backdrop-blur-2xl px-5 md:px-8 py-4 md:py-6 border-b border-white/50 dark:border-white/10 shadow-sm z-20 sticky top-0 flex flex-col md:flex-row justify-between md:items-center gap-4 rounded-2xl md:rounded-3xl mb-4 md:mb-6 mt-2 mx-2 md:mx-0">
         <div>
           <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Evaluasi Akhir</h2>
@@ -152,7 +166,9 @@ export default function Kuis() {
                   <span className="text-purple-700 dark:text-purple-300 bg-purple-100/80 dark:bg-purple-900/50 px-3 py-0.5 md:px-3.5 md:py-1 rounded-lg md:rounded-xl shadow-inner border border-purple-200/50 dark:border-purple-800/50 flex-shrink-0 mt-0.5 md:mt-0">
                     {index + 1}
                   </span> 
-                  {soal.pertanyaan}
+                  <div className="flex-1 w-full overflow-hidden">
+                    {formatTeksDenganKode(soal.pertanyaan)}
+                  </div>
                 </h3>
                 
                 <div className="space-y-2.5 md:space-y-3">
@@ -168,7 +184,7 @@ export default function Kuis() {
 
                     if (sudahDikumpulkan) {
                       if (opsi.id === soal.jawabanBenar) {
-                        optionStyle = "border-emerald-500 bg-emerald-100/90 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-100 font-bold border-2 shadow-sm";
+                        optionStyle = "border-emerald-500 bg-emerald-100/90 dark:emerald-900/60 text-emerald-900 dark:text-emerald-100 font-bold border-2 shadow-sm";
                         badge = <span className="ml-auto bg-emerald-500 text-white text-[9px] md:text-[11px] font-bold uppercase tracking-wider px-2 py-1 md:px-3 md:py-1 rounded-md md:rounded-lg shrink-0">Jawaban Benar</span>;
                       } else if (isSelected && opsi.id !== soal.jawabanBenar) {
                         optionStyle = "border-red-400 bg-red-100/90 dark:bg-red-900/60 text-red-900 dark:text-red-100 font-bold border-2 shadow-sm";
@@ -182,7 +198,6 @@ export default function Kuis() {
                       <div 
                         key={opsi.id}
                         onClick={() => handlePilihJawaban(soal.id, opsi.id)}
-                        // UBAH: Padding p-3.5 agar kotak jawaban nyaman di-tap di layar HP
                         className={`p-3.5 md:p-4 rounded-xl md:rounded-2xl border-2 cursor-pointer transition-all duration-200 flex items-center gap-3 md:gap-4 backdrop-blur-sm min-h-[60px] md:min-h-0 ${optionStyle} ${sudahDikumpulkan ? 'cursor-default pointer-events-none' : ''}`}
                       >
                         <div className={`h-5 w-5 md:h-6 md:w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors bg-white/50 dark:bg-slate-900/50 ${
@@ -195,7 +210,9 @@ export default function Kuis() {
                           {sudahDikumpulkan && isSelected && opsi.id !== soal.jawabanBenar && <div className="h-2.5 w-2.5 md:h-3 md:w-3 rounded-full bg-red-500"></div>}
                         </div>
                         
-                        <span className="text-[13px] md:text-base flex-1 leading-relaxed">{opsi.teks}</span>
+                        <div className="text-[13px] md:text-base flex-1 leading-relaxed overflow-hidden">
+                          {formatTeksDenganKode(opsi.teks)}
+                        </div>
                         {badge}
                       </div>
                     );
@@ -245,4 +262,4 @@ export default function Kuis() {
       </div>
     </div>
   );
-} 
+}
